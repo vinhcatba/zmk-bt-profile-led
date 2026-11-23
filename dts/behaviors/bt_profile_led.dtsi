@@ -1,0 +1,9 @@
+/ {
+    behaviors {
+        bt_clr_all_led: bt_clr_all_led {
+            compatible = "zmk,behavior-bt-profile-led";
+            #binding-cells = <0>;
+            display-name = "Clear All BT Profiles (LED)";
+        };
+    };
+};

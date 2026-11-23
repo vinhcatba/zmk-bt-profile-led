@@ -1,0 +1,5 @@
+description: Clear all Bluetooth profiles and quick-blink all profile LEDs
+
+compatible: "zmk,behavior-bt-profile-led"
+
+include: zero_param.yaml

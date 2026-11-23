@@ -1,0 +1,126 @@
+config BT_PROFILE_LED
+    bool "Enable per-profile Bluetooth status LED widget (GPIO and/or SK6812/WS2812 strip)"
+    depends on ZMK_BLE
+    help
+      Indicate the active Bluetooth profile connection state using dedicated
+      single-color GPIO LEDs, an addressable SK6812/WS2812 LED strip, or both
+      at the same time.
+
+if BT_PROFILE_LED
+
+config BT_PROFILE_LED_GPIO
+    bool "Enable single-color GPIO LEDs (gpio-leds)"
+    default y if !BT_PROFILE_LED_STRIP
+    help
+      Use one single-color GPIO LED per profile via devicetree aliases
+      led-bt-0 through led-bt-7. Can be enabled alongside
+      CONFIG_BT_PROFILE_LED_STRIP to drive both hardware backends together.
+
+config BT_PROFILE_LED_STRIP
+    bool "Enable addressable smart RGB LED strip (SK6812 / WS2812)"
+    default n
+    help
+      Use an addressable LED strip (SK6812, WS2812B, etc.) via Zephyr's
+      led_strip driver, referenced by chosen property zmk,bt-profile-led-strip
+      (or fallback zmk,underglow). Can be enabled alongside
+      CONFIG_BT_PROFILE_LED_GPIO to drive both hardware backends together.
+
+if BT_PROFILE_LED_GPIO
+
+config LED
+    default y
+
+endif # BT_PROFILE_LED_GPIO
+
+if BT_PROFILE_LED_STRIP
+
+config LED_STRIP
+    default y
+
+# Color definitions matching awkannan/zmk-smart-rgbled-widget & caksoylar/zmk-rgbled-widget
+BT_LED_COLOR_BLACK := 0
+BT_LED_COLOR_RED := 1
+BT_LED_COLOR_GREEN := 2
+BT_LED_COLOR_YELLOW := 3
+BT_LED_COLOR_BLUE := 4
+BT_LED_COLOR_MAGENTA := 5
+BT_LED_COLOR_CYAN := 6
+BT_LED_COLOR_WHITE := 7
+
+config BT_PROFILE_LED_STRIP_OFFSET
+    int "Starting LED index on the strip for BT profile 0"
+    default 0
+    range 0 255
+
+config BT_PROFILE_LED_STRIP_COUNT
+    int "Number of strip LEDs assigned to BT profiles"
+    default 5
+    range 1 8
+
+config BT_PROFILE_LED_STRIP_BRIGHTNESS
+    int "LED strip brightness (1-255)"
+    default 32
+    range 1 255
+
+config BT_PROFILE_LED_STRIP_COLOR_CONNECTED
+    int "Color for connected BLE profile (0=Black..7=White)"
+    range 0 7
+    default $(BT_LED_COLOR_BLUE)
+
+config BT_PROFILE_LED_STRIP_COLOR_ADVERTISING
+    int "Color for advertising / empty BLE profile (0=Black..7=White)"
+    range 0 7
+    default $(BT_LED_COLOR_YELLOW)
+
+config BT_PROFILE_LED_STRIP_COLOR_DISCONNECTED
+    int "Color for disconnected bonded BLE profile (0=Black..7=White)"
+    range 0 7
+    default $(BT_LED_COLOR_RED)
+
+config BT_PROFILE_LED_STRIP_COLOR_CLEAR_ALL
+    int "Color for clear-all quick blink across all profile LEDs (0=Black..7=White)"
+    range 0 7
+    default $(BT_LED_COLOR_RED)
+
+endif # BT_PROFILE_LED_STRIP
+
+config BT_PROFILE_LED_SLOW_BLINK_MS
+    int "Slow blink interval in ms (ON and OFF duration for advertising / empty profile)"
+    default 500
+    range 50 10000
+
+config BT_PROFILE_LED_FAST_BLINK_MS
+    int "Fast blink interval in ms (ON and OFF duration for disconnected profile and clear-all)"
+    default 150
+    range 25 5000
+
+config BT_PROFILE_LED_CONNECTED_DURATION_MS
+    int "Solid ON duration in ms after profile connects, then turn off"
+    default 5000
+    range 100 60000
+
+config BT_PROFILE_LED_CLEAR_ALL_BLINK_COUNT
+    int "Number of quick blinks across all LEDs when clearing all BT profiles"
+    default 5
+    range 1 20
+
+config BT_PROFILE_LED_DETECT_MULTI_UNPAIR
+    bool "Auto-detect standard &bt BT_CLR_ALL via bond-deletion burst"
+    default y
+    help
+      Automatically trigger the all-LED quick blink when 2 or more Bluetooth
+      bonds are deleted within a short window (e.g. from standard &bt BT_CLR_ALL).
+      For guaranteed feedback even when 0 or 1 profiles are bonded, use the
+      &bt_clr_all_led behavior in your keymap.
+
+config BT_PROFILE_LED_SLEEP_TURN_OFF
+    bool "Turn off all profile LEDs when entering sleep state"
+    default y
+
+endif # BT_PROFILE_LED
+
+DT_COMPAT_ZMK_BEHAVIOR_BT_PROFILE_LED := zmk,behavior-bt-profile-led
+
+config ZMK_BEHAVIOR_BT_PROFILE_LED
+    bool
+    default $(dt_compat_enabled,$(DT_COMPAT_ZMK_BEHAVIOR_BT_PROFILE_LED))

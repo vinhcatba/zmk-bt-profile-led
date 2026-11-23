@@ -1,0 +1,6 @@
+if(CONFIG_BT_PROFILE_LED OR CONFIG_ZMK_BEHAVIOR_BT_PROFILE_LED)
+  zephyr_library()
+  zephyr_library_include_directories(include)
+  zephyr_library_sources_ifdef(CONFIG_BT_PROFILE_LED src/widget.c)
+  zephyr_library_sources_ifdef(CONFIG_ZMK_BEHAVIOR_BT_PROFILE_LED src/behavior_bt_profile_led.c)
+endif()

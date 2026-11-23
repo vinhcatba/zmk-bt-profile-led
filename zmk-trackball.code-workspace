@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "../zmk-config-test"
+		},
+		{
+			"path": "."
+		}
+	],
+    "settings": {}
+}
