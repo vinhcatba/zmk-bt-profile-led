@@ -23,15 +23,15 @@ manifest:
   remotes:
     - name: zmkfirmware
       url-base: https://github.com/zmkfirmware
-    - name: your-github-username
-      url-base: https://github.com/your-github-username
+    - name: vinhcatba
+      url-base: https://github.com/vinhcatba
   projects:
     - name: zmk
       remote: zmkfirmware
       revision: main
       import: app/west.yml
     - name: zmk-bt-profile-led
-      remote: your-github-username
+      remote: vinhcatba
       revision: main
   self:
     path: config
