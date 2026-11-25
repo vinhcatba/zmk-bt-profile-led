@@ -1,6 +1,6 @@
 # zmk-bt-profile-led
 
-A [ZMK](https://zmk.dev/docs/development/module-creation) module based on [caksoylar/zmk-rgbled-widget](https://github.com/caksoylar/zmk-rgbled-widget) and [awkannan/zmk-smart-rgbled-widget](https://github.com/awkannan/zmk-smart-rgbled-widget) that indicates the active Bluetooth profile's connection state using **single-color GPIO LEDs** (`gpio-leds`), an **addressable SK6812 / WS2812B LED strip** (`led_strip`), or **both simultaneously** — with **one LED assigned per profile** and **no ZMK core fork required**.
+A [ZMK](https://zmk.dev/docs/development/module-creation) module based on [caksoylar/zmk-rgbled-widget](https://github.com/caksoylar/zmk-rgbled-widget) and [awkannan/zmk-smart-rgbled-widget](https://github.com/awkannan/zmk-smart-rgbled-widget) that indicates the active Bluetooth profile's connection state using **single-color GPIO LEDs** (`gpio-leds`) or an **addressable SK6812 / WS2812B LED strip** (`led_strip`) — with **one LED assigned per profile** and **no ZMK core fork required**.
 
 ## Behavior
 
@@ -37,14 +37,26 @@ manifest:
     path: config
 ```
 
-### 2. Enable GPIO LEDs, SK6812 strip, or both
+### 2. Choose GPIO LEDs or SK6812 / WS2812B Strip
 
-`CONFIG_BT_PROFILE_LED_GPIO` and `CONFIG_BT_PROFILE_LED_STRIP` are independent options:
-- **GPIO only**: set `CONFIG_BT_PROFILE_LED=y` (`CONFIG_BT_PROFILE_LED_GPIO` defaults to `y` when `STRIP` is `n`).
-- **SK6812 / WS2812B strip only**: set `CONFIG_BT_PROFILE_LED=y` and `CONFIG_BT_PROFILE_LED_STRIP=y` (`CONFIG_BT_PROFILE_LED_GPIO` automatically defaults to `n`).
-- **Both together**: set `CONFIG_BT_PROFILE_LED=y`, `CONFIG_BT_PROFILE_LED_GPIO=y`, and `CONFIG_BT_PROFILE_LED_STRIP=y`.
+- **GPIO LEDs (default)**: set `CONFIG_BT_PROFILE_LED=y` (`CONFIG_BT_PROFILE_LED_STRIP` defaults to `n`).
+- **SK6812 / WS2812B strip**: set `CONFIG_BT_PROFILE_LED=y` and `CONFIG_BT_PROFILE_LED_STRIP=y`.
 
-#### Option A: Single-color GPIO LEDs (`CONFIG_BT_PROFILE_LED_GPIO=y`)
+#### GPIO LEDs vs. Addressable LED Strip
+
+| Feature | Single-color GPIO LEDs (`gpio-leds`) | Addressable LED Strip (`led_strip`) |
+| --- | --- | --- |
+| **Config** | `CONFIG_BT_PROFILE_LED=y` (default backend) | `CONFIG_BT_PROFILE_LED=y` + `CONFIG_BT_PROFILE_LED_STRIP=y` |
+| **Color & States** | Single color; states distinguished by blink pattern only | Per-state RGB colors (Connected, Advertising, Disconnected, Clear All) |
+| **Brightness / Dimming** | Binary ON/OFF only (brightness set by hardware resistor) | Software brightness (`CONFIG_BT_PROFILE_LED_STRIP_BRIGHTNESS`, `1..255`) |
+| **Pins & Wiring** | 1 GPIO pin per profile (`led-bt-0` .. `led-bt-7`) | 1 data pin (e.g., SPI MOSI) for all profile LEDs |
+| **LED Ordering** | Mapped directly by `led-bt-N` devicetree aliases | Contiguous slice via `OFFSET`, `COUNT`, and `REVERSE` |
+| **Idle Power Draw** | ~0 mA when OFF | ~0.5–1 mA quiescent current per LED even when dark (unless power-gated) |
+| **ZMK Lighting Coexistence** | Independent of ZMK Backlight and RGB Underglow | Independent when on its own strip (`zmk,bt-profile-led-strip`); do **not** share one strip with `CONFIG_ZMK_RGB_UNDERGLOW=y` |
+
+> **ZMK Lighting Isolation:** `zmk-bt-profile-led` brightness and color settings are completely local to this module and do **not** affect ZMK RGB Underglow (`CONFIG_ZMK_RGB_UNDERGLOW`), ZMK Backlight (`CONFIG_ZMK_BACKLIGHT`), or HID lock indicators. If you use both RGB Underglow and `zmk-bt-profile-led`, wire them as two separate `led_strip` devices (`zmk,underglow` and `zmk,bt-profile-led-strip`) so they do not overwrite each other's pixels.
+
+#### Option A: Single-color GPIO LEDs (Default)
 
 Define your LEDs under a `gpio-leds` node in your board/shield `.overlay` or `.dts` and map aliases `led-bt-0` through `led-bt-4` (up to `led-bt-7` supported):
 
@@ -132,11 +144,10 @@ Enable in `config/<keyboard>.conf` (keep `CONFIG_ZMK_RGB_UNDERGLOW=n` if this st
 CONFIG_BT_PROFILE_LED=y
 CONFIG_BT_PROFILE_LED_STRIP=y
 CONFIG_LED_STRIP=y
-CONFIG_WS2812_STRIP=y
 CONFIG_SPI=y
 ```
 
-> **Note:** Profile `0` maps to pixel index `CONFIG_BT_PROFILE_LED_STRIP_OFFSET + 0`, profile `1` to `OFFSET + 1`, and so on up to `CONFIG_BT_PROFILE_LED_STRIP_COUNT`.
+> **Note:** By default, profile `0` maps to pixel index `CONFIG_BT_PROFILE_LED_STRIP_OFFSET + 0`, profile `1` to `OFFSET + 1`, and so on up to `CONFIG_BT_PROFILE_LED_STRIP_COUNT`. Set `CONFIG_BT_PROFILE_LED_STRIP_REVERSE=y` to reverse this order (profile `0` maps to `OFFSET + COUNT - 1`).
 
 ### 3. Clear-all-profiles quick blink in your keymap
 
@@ -165,9 +176,8 @@ Because ZMK's built-in `zmk_ble_clear_all_bonds()` (called by `&bt BT_CLR_ALL` i
 
 | Option | Description | Default |
 | --- | --- | --- |
-| `CONFIG_BT_PROFILE_LED` | Enable the per-profile Bluetooth status LED widget | `n` |
-| `CONFIG_BT_PROFILE_LED_GPIO` | Enable single-color GPIO LEDs (`gpio-leds`) | `y` if `STRIP=n`, else `n` |
-| `CONFIG_BT_PROFILE_LED_STRIP` | Enable addressable SK6812 / WS2812B LED strip (`led_strip`) | `n` |
+| `CONFIG_BT_PROFILE_LED` | Enable the per-profile Bluetooth status LED widget (GPIO LEDs by default) | `n` |
+| `CONFIG_BT_PROFILE_LED_STRIP` | Use addressable SK6812 / WS2812B LED strip (`led_strip`) instead of GPIO LEDs | `n` |
 | `CONFIG_BT_PROFILE_LED_SLOW_BLINK_MS` | Slow blink interval in ms (ON and OFF duration for advertising / empty profile) | `500` |
 | `CONFIG_BT_PROFILE_LED_FAST_BLINK_MS` | Fast blink interval in ms (ON and OFF duration for disconnected profile and clear-all quick blink) | `150` |
 | `CONFIG_BT_PROFILE_LED_CONNECTED_DURATION_MS` | Solid ON duration in ms after connecting before turning off | `5000` |
@@ -181,6 +191,7 @@ Because ZMK's built-in `zmk_ble_clear_all_bonds()` (called by `&bt BT_CLR_ALL` i
 | --- | --- | --- |
 | `CONFIG_BT_PROFILE_LED_STRIP_OFFSET` | Starting pixel index on the strip for BT profile 0 | `0` |
 | `CONFIG_BT_PROFILE_LED_STRIP_COUNT` | Number of strip pixels assigned to BT profiles (`1..8`) | `5` |
+| `CONFIG_BT_PROFILE_LED_STRIP_REVERSE` | Reverse strip LED order (profile `0` maps to last profile LED) | `n` |
 | `CONFIG_BT_PROFILE_LED_STRIP_BRIGHTNESS` | Brightness level (`1..255`) | `32` |
 | `CONFIG_BT_PROFILE_LED_STRIP_COLOR_CONNECTED` | Color for connected state | Blue (`4`) |
 | `CONFIG_BT_PROFILE_LED_STRIP_COLOR_ADVERTISING` | Color for advertising / empty profile | Yellow (`3`) |

@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: MIT
  *
  * Per-profile Bluetooth status LED indicator for ZMK.
- * Supports single-color GPIO LEDs (gpio-leds), addressable smart RGB LED
- * strips such as SK6812 / WS2812B (led_strip), or both simultaneously.
+ * Supports single-color GPIO LEDs (gpio-leds) or an addressable smart RGB LED
+ * strip such as SK6812 / WS2812B (led_strip).
  *
  * Inspired by:
  *   - https://github.com/caksoylar/zmk-rgbled-widget
@@ -18,11 +18,10 @@
 #include <zephyr/init.h>
 #include <zephyr/logging/log.h>
 
-#if IS_ENABLED(CONFIG_BT_PROFILE_LED_GPIO)
-#include <zephyr/drivers/led.h>
-#endif
 #if IS_ENABLED(CONFIG_BT_PROFILE_LED_STRIP)
 #include <zephyr/drivers/led_strip.h>
+#else
+#include <zephyr/drivers/led.h>
 #endif
 
 #include <zmk/ble.h>
@@ -42,10 +41,6 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #if IS_ENABLED(CONFIG_ZMK_BLE) &&                                                                  \
     (!IS_ENABLED(CONFIG_ZMK_SPLIT) || IS_ENABLED(CONFIG_ZMK_SPLIT_ROLE_CENTRAL))
 
-#if !IS_ENABLED(CONFIG_BT_PROFILE_LED_GPIO) && !IS_ENABLED(CONFIG_BT_PROFILE_LED_STRIP)
-#error "Enable at least one of CONFIG_BT_PROFILE_LED_GPIO or CONFIG_BT_PROFILE_LED_STRIP"
-#endif
-
 enum led_anim_mode {
     ANIM_OFF = 0,
     ANIM_SOLID_TIMED,
@@ -56,7 +51,7 @@ enum led_anim_mode {
 
 /* ---------- GPIO LED backend ---------- */
 
-#if IS_ENABLED(CONFIG_BT_PROFILE_LED_GPIO)
+#if !IS_ENABLED(CONFIG_BT_PROFILE_LED_STRIP)
 
 struct profile_led {
     const struct device *dev;
@@ -126,11 +121,9 @@ static uint8_t gpio_init_leds(void) {
     return configured_count;
 }
 
-#endif /* CONFIG_BT_PROFILE_LED_GPIO */
+#else /* CONFIG_BT_PROFILE_LED_STRIP */
 
 /* ---------- SK6812 / WS2812 LED strip backend ---------- */
-
-#if IS_ENABLED(CONFIG_BT_PROFILE_LED_STRIP)
 
 #if DT_HAS_CHOSEN(zmk_bt_profile_led_strip)
 #define STRIP_NODE DT_CHOSEN(zmk_bt_profile_led_strip)
@@ -186,7 +179,10 @@ static inline bool strip_pixel_index(uint8_t profile_idx, size_t *out_pixel_idx)
     if (profile_idx >= CONFIG_BT_PROFILE_LED_STRIP_COUNT) {
         return false;
     }
-    size_t pixel_idx = (size_t)CONFIG_BT_PROFILE_LED_STRIP_OFFSET + profile_idx;
+    size_t mapped_idx = IS_ENABLED(CONFIG_BT_PROFILE_LED_STRIP_REVERSE)
+                            ? (size_t)(CONFIG_BT_PROFILE_LED_STRIP_COUNT - 1 - profile_idx)
+                            : (size_t)profile_idx;
+    size_t pixel_idx = (size_t)CONFIG_BT_PROFILE_LED_STRIP_OFFSET + mapped_idx;
     if (pixel_idx >= STRIP_NUM_PIXELS) {
         return false;
     }
@@ -248,22 +244,20 @@ static uint8_t strip_init_leds(void) {
 /* ---------- Combined hardware dispatch ---------- */
 
 static void hw_set_profile_led(uint8_t idx, bool on, enum led_anim_mode mode) {
-    ARG_UNUSED(mode);
-#if IS_ENABLED(CONFIG_BT_PROFILE_LED_GPIO)
-    gpio_set_profile_led(idx, on);
-#endif
 #if IS_ENABLED(CONFIG_BT_PROFILE_LED_STRIP)
     strip_set_profile_led(idx, on, mode);
+#else
+    ARG_UNUSED(mode);
+    gpio_set_profile_led(idx, on);
 #endif
 }
 
 static void hw_set_all_profile_leds(bool on, enum led_anim_mode mode) {
-    ARG_UNUSED(mode);
-#if IS_ENABLED(CONFIG_BT_PROFILE_LED_GPIO)
-    gpio_set_all_profile_leds(on);
-#endif
 #if IS_ENABLED(CONFIG_BT_PROFILE_LED_STRIP)
     strip_set_all_profile_leds(on, mode);
+#else
+    ARG_UNUSED(mode);
+    gpio_set_all_profile_leds(on);
 #endif
 }
 
@@ -492,17 +486,15 @@ ZMK_SUBSCRIPTION(bt_profile_led_widget, zmk_activity_state_changed);
 #endif
 
 static int bt_profile_led_init(void) {
-    uint8_t gpio_count = 0;
-    uint8_t strip_count = 0;
+    uint8_t led_count = 0;
 
-#if IS_ENABLED(CONFIG_BT_PROFILE_LED_GPIO)
-    gpio_count = gpio_init_leds();
-#endif
 #if IS_ENABLED(CONFIG_BT_PROFILE_LED_STRIP)
-    strip_count = strip_init_leds();
+    led_count = strip_init_leds();
+    LOG_INF("Initialized BT profile LED widget (strip: %u)", led_count);
+#else
+    led_count = gpio_init_leds();
+    LOG_INF("Initialized BT profile LED widget (GPIO: %u)", led_count);
 #endif
-
-    LOG_INF("Initialized BT profile LED widget (GPIO: %u, strip: %u)", gpio_count, strip_count);
 
 #if IS_ENABLED(CONFIG_BT_PROFILE_LED_DETECT_MULTI_UNPAIR) && IS_ENABLED(CONFIG_BT_SMP)
     int err = bt_conn_auth_info_cb_register(&bond_info_cb);

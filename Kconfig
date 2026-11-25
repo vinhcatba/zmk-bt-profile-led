@@ -1,20 +1,12 @@
 config BT_PROFILE_LED
-    bool "Enable per-profile Bluetooth status LED widget (GPIO and/or SK6812/WS2812 strip)"
+    bool "Enable per-profile Bluetooth status LED widget (GPIO or SK6812/WS2812 strip)"
     depends on ZMK_BLE
     help
       Indicate the active Bluetooth profile connection state using dedicated
-      single-color GPIO LEDs, an addressable SK6812/WS2812 LED strip, or both
-      at the same time.
+      single-color GPIO LEDs (default) or an addressable SK6812/WS2812 LED
+      strip when CONFIG_BT_PROFILE_LED_STRIP=y.
 
 if BT_PROFILE_LED
-
-config BT_PROFILE_LED_GPIO
-    bool "Enable single-color GPIO LEDs (gpio-leds)"
-    default y if !BT_PROFILE_LED_STRIP
-    help
-      Use one single-color GPIO LED per profile via devicetree aliases
-      led-bt-0 through led-bt-7. Can be enabled alongside
-      CONFIG_BT_PROFILE_LED_STRIP to drive both hardware backends together.
 
 config BT_PROFILE_LED_STRIP
     bool "Enable addressable smart RGB LED strip (SK6812 / WS2812)"
@@ -22,15 +14,14 @@ config BT_PROFILE_LED_STRIP
     help
       Use an addressable LED strip (SK6812, WS2812B, etc.) via Zephyr's
       led_strip driver, referenced by chosen property zmk,bt-profile-led-strip
-      (or fallback zmk,underglow). Can be enabled alongside
-      CONFIG_BT_PROFILE_LED_GPIO to drive both hardware backends together.
+      (or fallback zmk,underglow), instead of single-color GPIO LEDs.
 
-if BT_PROFILE_LED_GPIO
+if !BT_PROFILE_LED_STRIP
 
 config LED
     default y
 
-endif # BT_PROFILE_LED_GPIO
+endif # !BT_PROFILE_LED_STRIP
 
 if BT_PROFILE_LED_STRIP
 
@@ -56,6 +47,13 @@ config BT_PROFILE_LED_STRIP_COUNT
     int "Number of strip LEDs assigned to BT profiles"
     default 5
     range 1 8
+
+config BT_PROFILE_LED_STRIP_REVERSE
+    bool "Reverse strip LED order (map BT profile 0 to the last profile LED)"
+    default n
+    help
+      When enabled, BT profile 0 maps to pixel index
+      (OFFSET + COUNT - 1), profile 1 to (OFFSET + COUNT - 2), and so on.
 
 config BT_PROFILE_LED_STRIP_BRIGHTNESS
     int "LED strip brightness (1-255)"
