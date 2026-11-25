@@ -194,7 +194,7 @@ Because ZMK's built-in `zmk_ble_clear_all_bonds()` (called by `&bt BT_CLR_ALL` i
 | `CONFIG_BT_PROFILE_LED_STRIP_REVERSE` | Reverse strip LED order (profile `0` maps to last profile LED) | `n` |
 | `CONFIG_BT_PROFILE_LED_STRIP_BRIGHTNESS` | Brightness level (`1..255`) | `32` |
 | `CONFIG_BT_PROFILE_LED_STRIP_COLOR_CONNECTED` | Color for connected state | Blue (`4`) |
-| `CONFIG_BT_PROFILE_LED_STRIP_COLOR_ADVERTISING` | Color for advertising / empty profile | Yellow (`3`) |
+| `CONFIG_BT_PROFILE_LED_STRIP_COLOR_ADVERTISING` | Color for advertising / empty profile | Green (`2`) |
 | `CONFIG_BT_PROFILE_LED_STRIP_COLOR_DISCONNECTED` | Color for disconnected bonded profile | Red (`1`) |
 | `CONFIG_BT_PROFILE_LED_STRIP_COLOR_CLEAR_ALL` | Color for clear-all quick blink | Red (`1`) |
 

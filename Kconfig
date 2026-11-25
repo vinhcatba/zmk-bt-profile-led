@@ -68,7 +68,7 @@ config BT_PROFILE_LED_STRIP_COLOR_CONNECTED
 config BT_PROFILE_LED_STRIP_COLOR_ADVERTISING
     int "Color for advertising / empty BLE profile (0=Black..7=White)"
     range 0 7
-    default $(BT_LED_COLOR_YELLOW)
+    default $(BT_LED_COLOR_GREEN)
 
 config BT_PROFILE_LED_STRIP_COLOR_DISCONNECTED
     int "Color for disconnected bonded BLE profile (0=Black..7=White)"
